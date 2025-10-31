@@ -1,7 +1,5 @@
-import Navbar from '../custom-components/Navbar'
 import DarkVeil from '../components/DarkVeil'
 import supabase  from '../supabase-client'
-import { WindIcon } from 'lucide-react'
 
 const LoginPage = () => {
     

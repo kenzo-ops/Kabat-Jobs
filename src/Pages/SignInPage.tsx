@@ -1,4 +1,3 @@
-import Navbar from '../custom-components/Navbar'
 import DarkVeil from '../components/DarkVeil'
 
 const SignInPage = () => {
