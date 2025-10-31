@@ -4,7 +4,7 @@ import supabase  from '../supabase-client'
 const LoginPage = () => {
     
     const handlegoogleLogin = async () => {
-        const { data, error } = await supabase.auth.signInWithOAuth({
+        const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
                 redirectTo: `${window.location.origin}/home`,
