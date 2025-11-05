@@ -1,5 +1,6 @@
 import DarkVeil from '../components/DarkVeil'
 import supabase  from '../supabase-client'
+import { SiGoogle } from 'react-icons/si'
 
 const LoginPage = () => {
     
@@ -74,12 +75,7 @@ const LoginPage = () => {
                   onClick={handlegoogleLogin}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors border border-white/10 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 bg-white/10 hover:bg-white/15 text-white"
                 >
-                  <svg viewBox="0 0 48 48" className="h-5 w-5" aria-hidden>
-                    <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303C33.551 31.328 29.197 34 24 34c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C33.64 4.053 28.995 2 24 2 12.955 2 4 10.955 4 22s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.651-.389-3.917z"/>
-                    <path fill="#FF3D00" d="M6.306 14.691l6.571 4.817C14.4 16.062 18.822 14 24 14c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C33.64 4.053 28.995 2 24 2 16.318 2 9.656 6.337 6.306 14.691z"/>
-                    <path fill="#4CAF50" d="M24 42c5.137 0 9.735-1.97 13.24-5.182l-6.104-5.159C29.145 33.188 26.705 34 24 34c-5.176 0-9.525-2.667-11.292-6.604l-6.54 5.038C9.474 37.738 16.17 42 24 42z"/>
-                    <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-1.317 3.146-4.013 5.592-7.167 6.659.001-.001 6.104 5.159 6.104 5.159l.423.311C37.088 37.597 40 32.293 40 26c0-2.054-.369-4.022-1.052-5.917z"/>
-                  </svg>
+                  <SiGoogle />
                   Continue with Google
                 </button>
               </div>

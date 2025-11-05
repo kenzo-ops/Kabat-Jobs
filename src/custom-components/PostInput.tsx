@@ -1,5 +1,6 @@
 import React from "react";
 import { Image as ImageIcon, Link as LinkIcon, Paperclip, X } from "lucide-react";
+import supabase from "@/supabase-client";
 
 type PostInputProps = {
   onSubmit?: (data: { title: string; content: string }) => void;
@@ -14,6 +15,9 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
   const [linkUrl, setLinkUrl] = React.useState("");
   const [imageNames, setImageNames] = React.useState<string[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [Post, setPost] = React.useState([]);
+  const [newPost, setNewPost] = React.useState("");
+
 
   const titleLimit = 80;
   const contentLimit = 500;
@@ -23,11 +27,25 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
   const isExpanded =
     expanded || title.trim().length > 0 || content.trim().length > 0;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isDisabled) return;
+    const formData = new FormData(e.currentTarget);
+
+    const title = formData.get("title")?.toString().trim() || "";
+    const description = formData.get("description")?.toString().trim() || "";
+
+
     try {
       setIsSubmitting(true);
+        const {data, error} = await supabase.from("Posts").insert([{title, description}]).single();
+        
+        if (error) {
+            console.log("Failed to add data : ", error)
+        } else {
+            setPost((prev) => [...prev, data])
+            setNewPost("")
+        }
       const payload = { title: title.trim(), content: content.trim() };
       onSubmit ? onSubmit(payload) : console.log("Post submitted:", payload);
       setTitle("");
@@ -102,11 +120,13 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
               <div className="relative">
                 <input
                   id="post-title"
+                  name="title"
                   type="text"
                   value={title}
-                  onChange={(e) =>
-                    setTitle(e.target.value.slice(0, titleLimit))
-                  }
+                  onChange={(e) => {
+                    setTitle(e.target.value.slice(0, titleLimit));
+                    setNewPost(e.target.value);
+                  }}
                   onFocus={() => setExpanded(true)}
                   placeholder="Example: Frontend Developer React (Remote)"
                   className="w-full rounded-xl bg-white/5 text-white placeholder:text-white/40 border border-white/10 focus:border-white/20 focus:ring-2 focus:ring-white/20 outline-none px-3.5 py-2.5 text-sm"
@@ -129,6 +149,7 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
                   <div className="relative">
                     <textarea
                       id="post-content"
+                      name="description"
                       value={content}
                       onChange={(e) =>
                         setContent(e.target.value.slice(0, contentLimit))

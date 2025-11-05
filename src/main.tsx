@@ -7,6 +7,7 @@ import HomePage from './Pages/HomePage.tsx'
 import NotFoundPage from './Pages/NotFoundPage.tsx'
 import LoginPage from './Pages/LoginPage.tsx'
 import SignInPage from './Pages/SignInPage.tsx'
+import ProfilePage from './Pages/ProfilePage.tsx'
 
 const router = createBrowserRouter([{
   path: '/',
@@ -24,7 +25,12 @@ const router = createBrowserRouter([{
 {
   path: '/signin',
   element: <SignInPage/>
-}]); 
+},
+{
+  path: '/profile',
+  element: <ProfilePage/>
+},
+]); 
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
