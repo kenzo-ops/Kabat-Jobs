@@ -11,7 +11,7 @@ type NavItem = {
 const navItems: NavItem[] = [
     {
         label: "Overview",
-        href: "#overview",
+        href: "home",
         icon: (
             <svg
                 width="18"
@@ -96,6 +96,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
     const [isProfileMenuOpen, setIsProfileMenuOpen] = React.useState(false)
     const [user, setUser] = React.useState<User | null>(null)
+    const [avatarSrc, setAvatarSrc] = React.useState<string | null>(null)
+    const [avatarBroken, setAvatarBroken] = React.useState(false)
 
     useEffect(() => {
         // Get current user
@@ -118,6 +120,76 @@ const Sidebar: React.FC<SidebarProps> = ({
             subscription.unsubscribe()
         }
     }, [])
+
+    // Resolve avatar src whenever user metadata changes. We avoid calling listBuckets
+    // from the client; getPublicUrl is a client-side helper that does not require
+    // elevated permissions and is safe to call.
+    useEffect(() => {
+        let mounted = true
+        const resolveAvatar = async () => {
+            setAvatarBroken(false)
+            if (!user) {
+                if (mounted) setAvatarSrc(null)
+                return
+            }
+
+            // Cek custom avatar dari Supabase storage terlebih dahulu
+            const customAvatar = user.user_metadata?.custom_avatar_url
+            if (customAvatar) {
+                // Validate the URL format
+                try {
+                    new URL(customAvatar)
+                    if (mounted) {
+                        setAvatarSrc(customAvatar)
+                        setAvatarBroken(false)
+                    }
+                    return
+                } catch (err) {
+                    console.error("Invalid custom avatar URL:", err)
+                }
+            }
+
+            // Jika tidak ada custom avatar, coba gunakan Google avatar
+            // tapi ganti ukuran gambar dari s96-c menjadi s400-c untuk kualitas lebih baik
+            const googleAvatar = user.user_metadata?.avatar_url
+            if (googleAvatar?.includes("googleusercontent.com")) {
+                const betterQualityUrl = googleAvatar.replace("s96-c", "s400-c")
+                if (mounted) {
+                    setAvatarSrc(betterQualityUrl)
+                    setAvatarBroken(false)
+                }
+                return
+            }
+
+            // Fallback ke storage path jika ada
+            const storagePath = user.user_metadata?.avatar_path
+            if (storagePath) {
+                try {
+                    const {
+                        data: { publicUrl },
+                    } = supabase.storage
+                        .from("avatars")
+                        .getPublicUrl(storagePath)
+                    if (mounted) setAvatarSrc(publicUrl)
+                } catch (err) {
+                    console.error("Error resolving avatar from storage:", err)
+                    if (mounted) {
+                        setAvatarSrc(null)
+                        setAvatarBroken(true)
+                    }
+                }
+                return
+            }
+
+            // Tidak ada avatar yang valid
+            if (mounted) setAvatarSrc(null)
+        }
+
+        resolveAvatar()
+        return () => {
+            mounted = false
+        }
+    }, [user])
 
     const handleGoToProfile = () => {
         setIsProfileMenuOpen(false)
@@ -198,15 +270,41 @@ const Sidebar: React.FC<SidebarProps> = ({
                             className="bg-white/5 w-full group flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/5 transition-colors"
                         >
                             <div className="relative flex-shrink-0">
-                                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 p-[2px]">
-                                    <div className="h-full w-full rounded-full bg-black/80 flex items-center justify-center text-xs font-semibold text-white/90">
-                                        {user?.user_metadata?.name
-                                            ? user.user_metadata.name
-                                                  .split(" ")
-                                                  .map((n: string) => n[0])
-                                                  .join("")
-                                            : "??"}
-                                    </div>
+                                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 p-[2px] flex items-center justify-center">
+                                    {avatarSrc && !avatarBroken ? (
+                                        <img
+                                            src={avatarSrc}
+                                            alt={`${
+                                                user?.user_metadata?.name ||
+                                                "User"
+                                            } avatar`}
+                                            className="h-8 w-8 rounded-full object-cover block"
+                                            onError={() => {
+                                                console.error(
+                                                    "Avatar failed to load",
+                                                    avatarSrc
+                                                )
+                                                setAvatarBroken(true)
+                                                // Only clear the avatarSrc if it's a custom avatar
+                                                if (
+                                                    avatarSrc ===
+                                                    user?.user_metadata
+                                                        ?.custom_avatar_url
+                                                ) {
+                                                    setAvatarSrc(null)
+                                                }
+                                            }}
+                                        />
+                                    ) : (
+                                        <div className="h-8 w-8 rounded-full bg-black/80 flex items-center justify-center text-xs font-semibold text-white/90">
+                                            {user?.user_metadata?.name
+                                                ? user.user_metadata.name
+                                                      .split(" ")
+                                                      .map((n: string) => n[0])
+                                                      .join("")
+                                                : "??"}
+                                        </div>
+                                    )}
                                 </div>
                                 <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-black/80" />
                             </div>

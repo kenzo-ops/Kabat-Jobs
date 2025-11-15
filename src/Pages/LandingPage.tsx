@@ -12,9 +12,9 @@ const LandingPage = () => {
         <DarkVeil />
       </div>
       <Navbar />
-      <div className="relative z-10 flex flex-col min-h-screen">
-        <div className="flex-grow flex items-center justify-center">
-          <Hero title="Modern Job Platform for the Professional Generation" subtitle="Search. Apply. Succeed. With Kabat Jobs" />
+      <div className="relative z-10 flex flex-col text-center min-h-screen">
+        <div className="flex-grow flex items-center text-center justify-center">
+          <Hero title="Modern Job Platform for the Professional Generation" subtitle="Search. Apply. Succeed. With Kabat Jobs"/>
         </div>
       </div>
       <div className="relative z-10 flex flex-col pt-8">

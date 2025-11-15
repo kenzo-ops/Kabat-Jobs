@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { FiMenu, FiX } from 'react-icons/fi';
 import { Link } from 'react-router';
 
@@ -6,17 +6,23 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
-  React.useEffect(() => {
-    const onScroll = () => {
-      setIsScrolled(window.scrollY > 8);
-    };
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 8);
     onScroll();
+
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
+    setIsMobileMenuOpen((prev) => !prev);
+
+    // Lock scroll saat menu terbuka
+    if (!isMobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
   };
 
   const linkHover =
@@ -26,111 +32,177 @@ const Navbar = () => {
 
   return (
     <>
+      {/* NAVBAR */}
       <nav
         className={`
-          fixed top-3 sm:top-5 left-1/2 -translate-x-1/2
-          z-[9999]  
+          fixed top-3 lg:top-5 left-1/2 -translate-x-1/2
+          z-[9999]
           flex justify-between items-center
-          p-2
+          px-4 sm:px-6 md:px-8
+          py-2
           rounded-full
           font-poppins
           bg-gradient-to-r from-custom-secondary to-custom-third
           shadow-lg backdrop-blur-md
           transition-all duration-300 ease-out
-          ${isScrolled ? 'w-[70%]' : 'w-[80%] sm:w-[85%]'}
+          ${isScrolled ? "w-[92%] sm:w-[88%] md:w-[80%]" : "w-[95%] sm:w-[92%] md:w-[85%]"}
         `}
       >
-        <h1 className="text-lg sm:text-xl md:text-2xl mx-3 sm:mx-5 md:mx-7 text-secondary font-semibold drop-shadow-md">
+        <h1 className="text-lg sm:text-xl md:text-2xl font-semibold mx-2 text-secondary">
           Kabat Jobs
         </h1>
 
-        {/* Desktop Menu */}
-        <div className="hidden md:flex gap-4 lg:gap-7 mx-3 sm:mx-5 md:mx-7">
-          <Link to="/home" className={`${linkHover} text-sm lg:text-sm`}>
+        {/* DESKTOP MENU */}
+        <div className="hidden md:flex gap-4 lg:gap-7 mx-3">
+          <Link to="/home" className={`${linkHover} text-sm lg:text-base`}>
             Homes
           </Link>
-          <a href="#jobs" className={`${linkHover} text-sm lg:text-sm`}>
+          <a href="#jobs" className={`${linkHover} text-sm lg:text-base`}>
             Jobs
           </a>
-          <a href="#add-jobs" className={`${linkHover} text-sm lg:text-sm`}>
+          <a href="#add-jobs" className={`${linkHover} text-sm lg:text-base`}>
             Add Jobs
           </a>
-          <a href="#FAQ" className={`${linkHover} text-sm lg:text-sm`}>
+          <a href="#FAQ" className={`${linkHover} text-sm lg:text-base`}>
             FAQ
           </a>
         </div>
 
-        {/* <div className="hidden z-50 md:flex items-stretch overflow-hidden mx-3 border-2 border-white sm:mx-5 md:mx-7 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.18),transparent_60%)] border border-white/20 rounded-full">
-          <a
-            href="#signin"
-            className="inline-flex items-center justify-center bg-blue-600 px-5 py-2 text-sm lg:text-base text-white transition-all rounded-full hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-        
-          >
-            Sign In
-          </a>
-          <a
-            href="#login"
-            className="inline-flex items-center justify-center px-5 py-2 text-sm lg:text-base text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-          >
-            Log In
-          </a>
-        </div> */}
-
-        {/* Tombol Sign In dan Log In */}
-        <div className="hidden z-50 md:flex items-stretch overflow-hidden mx-3 border-2 border-white sm:mx-5 md:mx-7 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.18),transparent_60%)] border border-white/20 rounded-full">
+        {/* DESKTOP AUTH BUTTONS */}
+        <div className="hidden md:flex items-stretch overflow-hidden mx-3 border border-white/20 bg-white/10 backdrop-blur-xl rounded-full">
           <Link
             to="/signin"
-            className="inline-flex items-center justify-center bg-gradient-to-r from-blue-400 to-blue-900 px-5 py-2 text-sm lg:text-base text-white transition-all rounded-full hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-        
+            className="inline-flex items-center justify-center bg-gradient-to-r from-blue-400 to-blue-900 px-5 py-2 text-sm lg:text-base text-white rounded-full transition-all"
           >
             Sign In
           </Link>
           <Link
             to="/login"
-            className="inline-flex items-center justify-center px-5 py-2 text-sm lg:text-base text-white hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            className="inline-flex items-center justify-center px-5 py-2 text-sm lg:text-base text-white hover:bg-white/10 transition-all"
           >
             Log In
           </Link>
         </div>
 
-        {/* Mobile Menu Button */}
+        {/* MOBILE MENU BUTTON */}
         <button
           onClick={toggleMobileMenu}
-          className="md:hidden mx-3 p-2 text-white hover:text-blue-100 transition-colors focus-visible:outline-none"
-          aria-label="Toggle menu"
+          className="md:hidden p-2 text-white hover:text-blue-100 transition"
         >
-          {isMobileMenuOpen ? <FiX className="w-6 h-6" /> : <FiMenu className="w-6 h-6" />}
+          {isMobileMenuOpen ? <FiX className="w-7 h-7" /> : <FiMenu className="w-7 h-7" />}
         </button>
       </nav>
 
-      {/* Mobile Menu */}
-      {isMobileMenuOpen && (
-        <div className="fixed top-20 sm:top-24 left-1/2 -translate-x-1/2 z-[9998] w-[90%] max-w-sm md:hidden">
-          <div className="bg-gradient-to-r from-custom-secondary to-custom-third rounded-2xl shadow-lg backdrop-blur-md border border-white/10 p-6 space-y-4">
-            <a
-              href="#home"
-              onClick={toggleMobileMenu}
-              className={`block text-white rounded-lg p-3 text-center font-semibold ${linkHover}`}
+      {/* MOBILE MENU FULLSCREEN dengan animasi slide down dan blur background */}
+      <div className={`
+        fixed inset-0 z-[9998]
+        md:hidden
+        transition-all duration-500 ease-out
+        ${isMobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'}
+      `}>
+        {/* Blur Background Layer - Transparent */}
+        <div className="absolute inset-0 bg-black/30 backdrop-blur-xl" />
+        
+        {/* Menu Content */}
+        <div className="relative z-10 flex flex-col items-center justify-center h-full p-6">
+          {/* Logo/Title di atas */}
+          <div className={`mb-12 transform transition-all duration-300 ${isMobileMenuOpen ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-4 opacity-0 scale-95'}`}
+            style={{ transitionDelay: isMobileMenuOpen ? '50ms' : '0ms' }}
+          >
+            <h2 className="text-3xl font-bold text-white mb-2 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-transparent">
+              Kabat Jobs
+            </h2>
+            <div className="h-1 w-20 mx-auto bg-gradient-to-r from-blue-400 to-purple-400 rounded-full" />
+          </div>
+
+          {/* Menu Items dengan card style */}
+          <div className="space-y-3 w-full max-w-xs">
+            <Link 
+              className={`
+                block w-full text-center text-white text-xl py-4 px-6 font-semibold rounded-2xl
+                bg-white/10 backdrop-blur-sm border border-white/20
+                hover:bg-white/20 hover:border-white/30 hover:scale-105
+                transform transition-all duration-300 shadow-lg
+                ${isMobileMenuOpen ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}
+              `} 
+              style={{ transitionDelay: isMobileMenuOpen ? '100ms' : '0ms' }}
+              onClick={toggleMobileMenu} 
+              to="/home"
             >
               Homes
-            </a>
-            <a
+            </Link>
+            <a 
+              className={`
+                block w-full text-center text-white text-xl py-4 px-6 font-semibold rounded-2xl
+                bg-white/10 backdrop-blur-sm border border-white/20
+                hover:bg-white/20 hover:border-white/30 hover:scale-105
+                transform transition-all duration-300 shadow-lg
+                ${isMobileMenuOpen ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}
+              `}
+              style={{ transitionDelay: isMobileMenuOpen ? '200ms' : '0ms' }}
+              onClick={toggleMobileMenu} 
               href="#jobs"
-              onClick={toggleMobileMenu}
-              className={`block text-white rounded-lg p-3 text-center font-semibold ${linkHover}`}
             >
               Jobs
             </a>
-            <a
+            <a 
+              className={`
+                block w-full text-center text-white text-xl py-4 px-6 font-semibold rounded-2xl
+                bg-white/10 backdrop-blur-sm border border-white/20
+                hover:bg-white/20 hover:border-white/30 hover:scale-105
+                transform transition-all duration-300 shadow-lg
+                ${isMobileMenuOpen ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}
+              `}
+              style={{ transitionDelay: isMobileMenuOpen ? '300ms' : '0ms' }}
+              onClick={toggleMobileMenu} 
               href="#add-jobs"
-              onClick={toggleMobileMenu}
-              className={`block text-white rounded-lg p-3 text-center font-semibold ${linkHover}`}
             >
               Add Jobs
             </a>
+            <a 
+              className={`
+                block w-full text-center text-white text-xl py-4 px-6 font-semibold rounded-2xl
+                bg-white/10 backdrop-blur-sm border border-white/20
+                hover:bg-white/20 hover:border-white/30 hover:scale-105
+                transform transition-all duration-300 shadow-lg
+                ${isMobileMenuOpen ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}
+              `}
+              style={{ transitionDelay: isMobileMenuOpen ? '400ms' : '0ms' }}
+              onClick={toggleMobileMenu} 
+              href="#FAQ"
+            >
+              FAQ
+            </a>
+          </div>
+
+          {/* Auth Buttons dengan style lebih menarik */}
+          <div className={`flex flex-col gap-3 mt-10 w-full max-w-xs transform transition-all duration-300 ${isMobileMenuOpen ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}
+            style={{ transitionDelay: isMobileMenuOpen ? '500ms' : '0ms' }}
+          >
+            <Link
+              to="/signin"
+              onClick={toggleMobileMenu}
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-blue-700 text-white font-bold text-lg shadow-2xl hover:shadow-blue-500/50 hover:scale-105 transition-all duration-300 text-center border border-blue-400/30"
+            >
+              Sign In →
+            </Link>
+            <Link
+              to="/login"
+              onClick={toggleMobileMenu}
+              className="w-full py-4 rounded-2xl bg-white/15 backdrop-blur-sm border-2 border-white/30 text-white font-bold text-lg shadow-xl hover:bg-white/25 hover:scale-105 transition-all duration-300 text-center"
+            >
+              Log In
+            </Link>
+          </div>
+
+          {/* Footer text */}
+          <div className={`mt-8 text-white/60 text-sm transform transition-all duration-300 ${isMobileMenuOpen ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}
+            style={{ transitionDelay: isMobileMenuOpen ? '600ms' : '0ms' }}
+          >
+            Find your dream job today
           </div>
         </div>
-      )}
+      </div>
     </>
   );
 };
