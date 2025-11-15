@@ -1,4 +1,3 @@
-import BlurText from '@/components/BlurText'
 import StarBorder from '@/components/StarBorder'
 
 function Hero({ title = '', subtitle = '' }) {
