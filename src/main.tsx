@@ -9,6 +9,7 @@ import LoginPage from './Pages/LoginPage.tsx'
 import SignInPage from './Pages/SignInPage.tsx'
 import ProfilePage from './Pages/ProfilePage.tsx'
 import PostDetailPage from './Pages/PostDetailPage.tsx'
+import AuthCallbackPage from './Pages/AuthCallback.tsx'
 
 const router = createBrowserRouter([
   {
@@ -35,6 +36,10 @@ const router = createBrowserRouter([
   {
     path: '/post/:id',  // ✅ UBAH DARI /posts ke /post/:id
     element: <PostDetailPage/>
+  },
+  {
+    path: '/auth/callback',
+    element: <AuthCallbackPage />,
   },
 ]); 
 
