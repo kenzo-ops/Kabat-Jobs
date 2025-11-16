@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, memo } from "react";
 import { Heart, MessageCircle, Share2, MoreVertical, ExternalLink } from "lucide-react";
+import { useNavigate } from "react-router";
 import supabase from "@/supabase-client";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -18,7 +19,8 @@ type Post = {
   user_email?: string | null;
   user_avatar_url?: string | null;
   user_custom_avatar_url?: string | null;
-  likes_count?: number;  // ✅ TAMBAHKAN INI
+  likes_count?: number;
+  comments_count?: number;
 };
 
 type PostListProps = {
@@ -35,16 +37,43 @@ const PostItem = memo<{
   isLiked: boolean;
   onImageClick: (url: string) => void;
   onLikeClick: (postId: string) => void;
+  onPostClick: (postId: string) => void;
   getAvatarUrl: (post: Post) => string | null;
   getUserInitials: (post: Post) => string;
   getDisplayName: (post: Post) => string;
-}>(({ post, isLiked, onImageClick, onLikeClick, getAvatarUrl, getUserInitials, getDisplayName }) => {
+}>(({ 
+  post, 
+  isLiked, 
+  onImageClick, 
+  onLikeClick, 
+  onPostClick,
+  getAvatarUrl, 
+  getUserInitials, 
+  getDisplayName 
+}) => {
   const avatarUrl = getAvatarUrl(post);
   const userInitials = getUserInitials(post);
   const displayName = getDisplayName(post);
 
+  // Handler untuk navigate ke detail
+  const handlePostClick = (e: React.MouseEvent) => {
+    // Jangan navigate jika user klik button, link, atau image
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') || 
+      target.closest('a') || 
+      target.closest('[data-no-navigate]')
+    ) {
+      return;
+    }
+    onPostClick(post.id);
+  };
+
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.6)] transition-all hover:border-white/20 hover:shadow-[0_15px_50px_-10px_rgba(0,0,0,0.8)]">
+    <article 
+      onClick={handlePostClick}
+      className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.6)] transition-all hover:border-white/20 hover:shadow-[0_15px_50px_-10px_rgba(0,0,0,0.8)] cursor-pointer"
+    >
       <div className="absolute inset-px rounded-[1rem] bg-gradient-to-b from-white/5 to-white/0 pointer-events-none" />
 
       <div className="relative p-5 sm:p-6">
@@ -95,14 +124,15 @@ const PostItem = memo<{
           {post.title}
         </h2>
 
-        {/* Post Content */}
-        <p className="text-white/70 text-sm sm:text-base leading-relaxed mb-4">
+        {/* Post Content - Truncate untuk preview */}
+        <p className="text-white/70 text-sm sm:text-base leading-relaxed mb-4 line-clamp-3">
           {post.description}
         </p>
 
         {/* Post Images */}
         {post.images && post.images.length > 0 && (
           <div
+            data-no-navigate
             className={`mb-4 grid gap-2 ${
               post.images.length === 1
                 ? "grid-cols-1"
@@ -119,7 +149,10 @@ const PostItem = memo<{
                 className={`relative rounded-lg overflow-hidden bg-white/5 border border-white/10 cursor-pointer group ${
                   post.images!.length === 1 ? "aspect-video" : "aspect-square"
                 }`}
-                onClick={() => onImageClick(imageUrl)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onImageClick(imageUrl);
+                }}
               >
                 <img
                   src={imageUrl}
@@ -146,6 +179,7 @@ const PostItem = memo<{
             href={post.link_url}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-colors group"
           >
             <ExternalLink className="h-4 w-4 text-white/60 group-hover:text-white transition-colors" />
@@ -159,7 +193,10 @@ const PostItem = memo<{
         <div className="flex items-center justify-between pt-4 border-t border-white/10">
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => onLikeClick(post.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onLikeClick(post.id);
+              }}
               className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors group"
             >
               <Heart 
@@ -175,9 +212,12 @@ const PostItem = memo<{
             </button>
             <button className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors group">
               <MessageCircle className="h-4 w-4 group-hover:stroke-blue-400 transition-all" />
-              <span className="text-xs font-medium">0</span>
+              <span className="text-xs font-medium">{post.comments_count || 0}</span>
             </button>
-            <button className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors group">
+            <button 
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors group"
+            >
               <Share2 className="h-4 w-4 group-hover:stroke-green-400 transition-all" />
               <span className="text-xs font-medium">Share</span>
             </button>
@@ -193,15 +233,16 @@ PostItem.displayName = "PostItem";
 // ====================================
 // MAIN POST LIST COMPONENT
 // ====================================
-const PostList: React.FC<PostListProps> = ({}) => {
+const PostList: React.FC<PostListProps> = () => {
+  const navigate = useNavigate();
   const [post, setPost] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string>("");
-  const [userLikes, setUserLikes] = useState<Set<string>>(new Set());  // ✅ TAMBAHKAN INI
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);  // ✅ TAMBAHKAN INI
+  const [userLikes, setUserLikes] = useState<Set<string>>(new Set());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const observerTarget = useRef<HTMLDivElement>(null);
 
   // ====================================
@@ -230,6 +271,13 @@ const PostList: React.FC<PostListProps> = ({}) => {
   const getDisplayName = useCallback((post: Post): string => {
     return post.user_name || post.user_email?.split("@")[0] || "Anonymous User";
   }, []);
+
+  // ====================================
+  // NAVIGATION HANDLER
+  // ====================================
+  const handlePostClick = useCallback((postId: string) => {
+    navigate(`/post/${postId}`);
+  }, [navigate]);
 
   // ====================================
   // FETCH POSTS DENGAN RPC
@@ -302,67 +350,85 @@ const PostList: React.FC<PostListProps> = ({}) => {
   // REALTIME SUBSCRIPTION
   // ====================================
   useEffect(() => {
-    const channel = supabase
-      .channel("Posts")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "Posts",
-        },
-        async (payload) => {
-          console.log("Realtime event:", payload.eventType, payload);
+  const channel = supabase
+    .channel("Posts")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "Posts",
+      },
+      async (payload) => {
+        console.log("Realtime event:", payload.eventType, payload);
 
-          if (payload.eventType === "INSERT") {
-            const newPost = payload.new as Post;
+        if (payload.eventType === "INSERT") {
+          const newPost = payload.new as Post;
 
-            // Fetch user data untuk post baru
-            if (newPost.user_id) {
-              try {
-                const { data: userData, error } = await supabase.rpc(
-                  "get_user_profile",
-                  {
-                    user_id_param: newPost.user_id,
-                  }
-                );
-
-                if (!error && userData && userData.length > 0) {
-                  newPost.user_name = userData[0].name;
-                  newPost.user_email = userData[0].email;
-                  newPost.user_avatar_url = userData[0].avatar_url;
-                  newPost.user_custom_avatar_url = userData[0].custom_avatar_url;
+          // Fetch user data untuk post baru
+          if (newPost.user_id) {
+            try {
+              const { data: userData, error } = await supabase.rpc(
+                "get_user_profile",
+                {
+                  user_id_param: newPost.user_id,
                 }
-              } catch (err) {
-                console.error("Error fetching user profile:", err);
+              );
+
+              if (!error && userData && userData.length > 0) {
+                newPost.user_name = userData[0].name;
+                newPost.user_email = userData[0].email;
+                newPost.user_avatar_url = userData[0].avatar_url;
+                newPost.user_custom_avatar_url = userData[0].custom_avatar_url;
               }
+            } catch (err) {
+              console.error("Error fetching user profile:", err);
             }
-
-            setPost((prev) => {
-              const exists = prev.some((p) => p.id === newPost.id);
-              if (exists) return prev;
-              return [newPost, ...prev];
-            });
-            setHasMore(true);
-          } else if (payload.eventType === "UPDATE") {
-            const updatedPost = payload.new as Post;
-            setPost((prev) =>
-              prev.map((p) =>
-                p.id === updatedPost.id ? { ...p, ...updatedPost } : p
-              )
-            );
-          } else if (payload.eventType === "DELETE") {
-            const deletedPost = payload.old as Post;
-            setPost((prev) => prev.filter((p) => p.id !== deletedPost.id));
           }
-        }
-      )
-      .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+          setPost((prev) => {
+            const exists = prev.some((p) => p.id === newPost.id);
+            if (exists) return prev;
+            return [newPost, ...prev];
+          });
+          setHasMore(true);
+          
+        } else if (payload.eventType === "UPDATE") {
+          const updatedPost = payload.new as Post;
+          
+          // ✅ FIX: Merge dengan data existing, JANGAN override semua
+          setPost((prev) =>
+            prev.map((p) => {
+              if (p.id === updatedPost.id) {
+                // Merge: keep user data, only update post content & counts
+                return {
+                  ...p,  // Keep existing data (user info, etc)
+                  title: updatedPost.title,
+                  description: updatedPost.description,
+                  images: updatedPost.images,
+                  link_url: updatedPost.link_url,
+                  // ✅ PRESERVE counts if new data is null/undefined
+                  likes_count: updatedPost.likes_count ?? p.likes_count ?? 0,
+                  comments_count: updatedPost.comments_count ?? p.comments_count ?? 0,
+                  created_at: updatedPost.created_at,
+                };
+              }
+              return p;
+            })
+          );
+          
+        } else if (payload.eventType === "DELETE") {
+          const deletedPost = payload.old as Post;
+          setPost((prev) => prev.filter((p) => p.id !== deletedPost.id));
+        }
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, []);
 
   // ====================================
   // INFINITE SCROLL DENGAN DEBOUNCE
@@ -453,11 +519,11 @@ const PostList: React.FC<PostListProps> = ({}) => {
             : p
         ));
         console.error("Error toggling like:", error);
-      } else {
+      } else if (data && data.length > 0) {
         // Update with actual data from server
         setPost(prev => prev.map(p => 
           p.id === postId 
-            ? { ...p, likes_count: data.likes_count }
+            ? { ...p, likes_count: data[0].likes_count }
             : p
         ));
       }
@@ -479,6 +545,7 @@ const PostList: React.FC<PostListProps> = ({}) => {
             isLiked={userLikes.has(pos.id)}
             onImageClick={openImageModal}
             onLikeClick={handleLikeClick}
+            onPostClick={handlePostClick}
             getAvatarUrl={getAvatarUrl}
             getUserInitials={getUserInitials}
             getDisplayName={getDisplayName}

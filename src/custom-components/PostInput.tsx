@@ -1,6 +1,8 @@
 import React from "react";
 import { Image as ImageIcon, Link as LinkIcon, X } from "lucide-react";
 import supabase from "@/supabase-client";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 type PostInputProps = {
   onSubmit?: (data: { title: string; content: string; images?: string[] }) => void;
@@ -15,12 +17,13 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
   const [linkUrl, setLinkUrl] = React.useState("");
   const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = React.useState<string>("");
+
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const titleLimit = 80;
   const contentLimit = 500;
   const maxImages = 5;
-  const maxFileSize = 5 * 1024 * 1024; // 5MB
+  const maxFileSize = 5 * 1024 * 1024;
 
   const isDisabled =
     isSubmitting || title.trim().length === 0 || content.trim().length === 0;
@@ -53,9 +56,7 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
 
       if (uploadError) {
         console.error("Upload error:", uploadError);
-        throw new Error(
-          `Failed to upload ${file.name}: ${uploadError.message}`
-        );
+        throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
       }
 
       const {
@@ -76,24 +77,21 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
     try {
       setIsSubmitting(true);
 
-      // Get current user
       const {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        alert("You must be logged in to create a post");
+        toast.error("You must be logged in to create a post");
         return;
       }
 
-      // Upload images if any
       let imageUrls: string[] = [];
       if (selectedFiles.length > 0) {
         imageUrls = await uploadImages(selectedFiles);
       }
 
-      // Insert post dengan user_id
       const { data, error } = await supabase
         .from("Posts")
         .insert([
@@ -102,7 +100,7 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
             description: content.trim(),
             images: imageUrls.length > 0 ? imageUrls : null,
             link_url: linkUrl.trim() || null,
-            user_id: user.id, // Simpan user_id
+            user_id: user.id,
           },
         ])
         .select()
@@ -110,11 +108,9 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
 
       if (error) {
         console.error("Failed to add post:", error);
-        alert(`Failed to create post: ${error.message}`);
+        toast.error(`Failed to create post: ${error.message}`);
         return;
       }
-
-      console.log("Post created successfully:", data);
 
       if (onSubmit) {
         onSubmit({
@@ -132,10 +128,10 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
       setShowLinkInput(false);
       setExpanded(false);
 
-      alert("Post created successfully!");
+      toast.success("Post created successfully!");
     } catch (error: any) {
       console.error("Error creating post:", error);
-      alert(error.message || "Failed to create post. Please try again.");
+      toast.error(error.message || "Failed to create post.");
     } finally {
       setIsSubmitting(false);
       setUploadProgress("");
@@ -164,7 +160,7 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
     if (files.length === 0) return;
 
     if (files.length > maxImages) {
-      alert(`Maximum ${maxImages} images allowed per post`);
+      toast.error(`Maximum ${maxImages} images allowed`);
       return;
     }
 
@@ -173,13 +169,11 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
 
     for (const file of files) {
       if (!allowedTypes.includes(file.type)) {
-        alert(
-          `File ${file.name} is not a valid image type. Use JPG, PNG, GIF, or WEBP.`
-        );
+        toast.error(`Invalid file type: ${file.name}`);
         continue;
       }
       if (file.size > maxFileSize) {
-        alert(`File ${file.name} is too large. Maximum size is 5MB.`);
+        toast.error(`File too large: ${file.name}`);
         continue;
       }
       validFiles.push(file);
@@ -207,6 +201,15 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
 
   return (
     <section id="post" className="mt-0">
+      {/* Toast container */}
+      <ToastContainer
+        position="top-right"
+        theme="dark"
+        autoClose={2500}
+        hideProgressBar={false}
+        pauseOnHover
+      />
+
       <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.6)]">
         <div className="absolute inset-px rounded-[1rem] bg-gradient-to-b from-white/5 to-white/0 pointer-events-none" />
         <form
@@ -235,9 +238,7 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
                   name="title"
                   type="text"
                   value={title}
-                  onChange={(e) =>
-                    setTitle(e.target.value.slice(0, titleLimit))
-                  }
+                  onChange={(e) => setTitle(e.target.value.slice(0, titleLimit))}
                   onFocus={() => setExpanded(true)}
                   placeholder="Example: Frontend Developer React (Remote)"
                   className="w-full rounded-xl bg-white/5 text-white placeholder:text-white/40 border border-white/10 focus:border-white/20 focus:ring-2 focus:ring-white/20 outline-none px-3.5 py-2.5 text-sm"
@@ -275,7 +276,7 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
                   </div>
                 </div>
 
-                {/* Image preview */}
+                {/* Image previews */}
                 {selectedFiles.length > 0 && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {selectedFiles.map((file, index) => (
@@ -306,7 +307,6 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
                   </div>
                 )}
 
-                {/* Upload progress */}
                 {uploadProgress && (
                   <div className="text-xs text-white/70 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
                     {uploadProgress}
@@ -325,6 +325,7 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
                       <ImageIcon className="h-4 w-4" />
                       Image
                     </button>
+
                     <button
                       type="button"
                       onClick={handleAddLink}
@@ -334,6 +335,7 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
                       <LinkIcon className="h-4 w-4" />
                       Link
                     </button>
+
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -343,6 +345,7 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
                       onChange={handleImagesChange}
                     />
                   </div>
+
                   {selectedFiles.length > 0 && (
                     <div className="text-[11px] text-white/60">
                       {selectedFiles.length}/{maxImages} images selected
@@ -370,14 +373,15 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
                   </div>
                 )}
 
-                <div className="mt-2 flex items-center justify-between gap-3">
+                <div className="mt-2 flex items-center justify-between">
                   <div className="text-xs text-white/60">
                     Your post will appear immediately.
                   </div>
+
                   <button
                     type="submit"
                     disabled={isDisabled}
-                    className="inline-flex items-center justify-center rounded-lg px-3.5 py-2 text-xs sm:text-sm font-medium transition-colors border border-white/10 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:opacity-50 disabled:cursor-not-allowed bg-white/10 hover:bg-white/15 text-white"
+                    className="inline-flex items-center justify-center rounded-lg px-3.5 py-2 text-xs sm:text-sm font-medium transition-colors border border-white/10 shadow-sm bg-white/10 hover:bg-white/15 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isSubmitting ? "Posting..." : "Post"}
                   </button>

@@ -100,22 +100,9 @@ const Navbar = () => {
         transition-all duration-500 ease-out
         ${isMobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'}
       `}>
-        {/* Blur Background Layer - Transparent */}
         <div className="absolute inset-0 bg-black/30 backdrop-blur-xl" />
         
-        {/* Menu Content */}
         <div className="relative z-10 flex flex-col items-center justify-center h-full p-6">
-          {/* Logo/Title di atas */}
-          <div className={`mb-12 transform transition-all duration-300 ${isMobileMenuOpen ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-4 opacity-0 scale-95'}`}
-            style={{ transitionDelay: isMobileMenuOpen ? '50ms' : '0ms' }}
-          >
-            <h2 className="text-3xl font-bold text-white mb-2 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-transparent">
-              Kabat Jobs
-            </h2>
-            <div className="h-1 w-20 mx-auto bg-gradient-to-r from-blue-400 to-purple-400 rounded-full" />
-          </div>
-
-          {/* Menu Items dengan card style */}
           <div className="space-y-3 w-full max-w-xs">
             <Link 
               className={`
