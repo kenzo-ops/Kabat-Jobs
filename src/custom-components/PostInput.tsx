@@ -92,7 +92,7 @@ const PostInput: React.FC<PostInputProps> = ({ onSubmit }) => {
         imageUrls = await uploadImages(selectedFiles);
       }
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("Posts")
         .insert([
           {
