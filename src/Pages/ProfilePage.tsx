@@ -1,15 +1,40 @@
 import React, { useEffect, useRef } from "react"
 import DarkVeil from "@/components/DarkVeil"
 import Sidebar from "@/custom-components/Sidebar"
+import BottomBar from "@/custom-components/BottomBar"
 import supabase from "@/supabase-client"
 import type { User } from "@supabase/supabase-js"
+import { useNavigate } from "react-router"
+import { Heart, MessageCircle, Image as ImageIcon, Trash2, X } from "lucide-react"
+import dayjs from "dayjs"
+import relativeTime from "dayjs/plugin/relativeTime"
+import { ProfileInfoSkeleton, ProfilePostsSkeleton } from "@/custom-components/skeletons/ProfileSkeleton"
+
+dayjs.extend(relativeTime)
+
+type Post = {
+    id: string
+    title: string
+    description: string
+    images?: string[] | null
+    link_url?: string | null
+    user_id?: string
+    created_at: string
+    likes_count?: number
+    comments_count?: number
+}
 
 const ProfilePage: React.FC = () => {
+    const navigate = useNavigate()
     const [user, setUser] = React.useState<User | null>(null)
     const [uploading, setUploading] = React.useState(false)
-    const [active, setActive] = React.useState<string>("#overview")
     const [avatarSrc, setAvatarSrc] = React.useState<string | null>(null)
     const [avatarBroken, setAvatarBroken] = React.useState(false)
+    const [activeTab, setActiveTab] = React.useState<"profile" | "posts">("profile")
+    const [posts, setPosts] = React.useState<Post[]>([])
+    const [loadingPosts, setLoadingPosts] = React.useState(false)
+    const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null)
+    const [deleting, setDeleting] = React.useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const handleProfileImageUpload = async (
@@ -132,12 +157,71 @@ const ProfilePage: React.FC = () => {
         fileInputRef.current?.click()
     }
 
+    const fetchUserPosts = async (userId: string) => {
+        setLoadingPosts(true)
+        try {
+            const { data, error } = await supabase.rpc("get_user_posts", {
+                p_user_id: userId
+            })
+
+            if (error) {
+                console.error("Error fetching user posts:", error)
+                return
+            }
+
+            if (data) {
+                setPosts(data)
+            }
+        } catch (error) {
+            console.error("Error fetching posts:", error)
+        } finally {
+            setLoadingPosts(false)
+        }
+    }
+
+    const handleDeletePost = async (postId: string) => {
+    setDeleting(true)
+    try {
+        const { data, error } = await supabase.rpc("delete_user_post", {
+            p_post_id: parseInt(postId),
+            p_user_id: user?.id
+        })
+
+        if (error) {
+            console.error("Error deleting post:", error)
+            alert("Failed to delete post. Please try again.")
+            return
+        }
+
+        if (data && data.length > 0) {
+            const result = data[0]
+            if (result.success) {
+                // Remove from UI
+                setPosts(posts.filter(post => post.id !== postId))
+                setDeleteConfirmId(null)
+                // Optional: show success message
+                // alert(result.message)
+            } else {
+                alert(result.message)
+            }
+        }
+    } catch (error) {
+        console.error("Error deleting post:", error)
+        alert("An error occurred while deleting the post.")
+    } finally {
+        setDeleting(false)
+    }
+}
+
     useEffect(() => {
         const fetchUser = async () => {
             const {
                 data: { user },
             } = await supabase.auth.getUser()
             setUser(user)
+            if (user) {
+                fetchUserPosts(user.id)
+            }
         }
         fetchUser()
 
@@ -145,6 +229,9 @@ const ProfilePage: React.FC = () => {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((_event, session) => {
             setUser(session?.user ?? null)
+            if (session?.user) {
+                fetchUserPosts(session.user.id)
+            }
         })
 
         return () => {
@@ -152,7 +239,6 @@ const ProfilePage: React.FC = () => {
         }
     }, [])
 
-    // Resolve avatar src whenever user metadata changes (sama seperti di Sidebar)
     useEffect(() => {
         let mounted = true
         const resolveAvatar = async () => {
@@ -225,19 +311,16 @@ const ProfilePage: React.FC = () => {
                 <DarkVeil />
             </div>
 
-            <div className="relative z-10 mx-auto max-w-7xl px-6 sm:px-8 lg:px-10 py-6 sm:py-8">
+            <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-24 md:pb-8">
                 <div className="flex gap-6">
                     <div className="hidden md:block shrink-0">
                         <div className="sticky top-6 self-start">
-                            <Sidebar
-                                activeHref={active}
-                                onNavigate={setActive}
-                            />
+                            <Sidebar />
                         </div>
                     </div>
 
                     <main className="flex-1 min-w-0">
-                        <div className="mx-auto max-w-7xl">
+                        <div className="mx-auto max-w-8xl">
                             <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.6)]">
                                 <div className="absolute inset-px rounded-[1rem] bg-gradient-to-b from-white/5 to-white/0 pointer-events-none" />
                                 <div className="relative p-6 sm:p-8">
@@ -248,6 +331,41 @@ const ProfilePage: React.FC = () => {
                                         Kelola informasi akun Anda.
                                     </p>
 
+                                    {/* Tab Navigation */}
+                                    <div className="mt-6 flex gap-2 border-b border-white/10">
+                                        <button
+                                            onClick={() => setActiveTab("profile")}
+                                            className={`px-4 py-2.5 text-sm font-medium transition-all relative ${
+                                                activeTab === "profile"
+                                                    ? "text-white"
+                                                    : "text-white/60 hover:text-white/80"
+                                            }`}
+                                        >
+                                            Profile Info
+                                            {activeTab === "profile" && (
+                                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500" />
+                                            )}
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab("posts")}
+                                            className={`px-4 py-2.5 text-sm font-medium transition-all relative ${
+                                                activeTab === "posts"
+                                                    ? "text-white"
+                                                    : "text-white/60 hover:text-white/80"
+                                            }`}
+                                        >
+                                            My Posts ({posts.length})
+                                            {activeTab === "posts" && (
+                                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500" />
+                                            )}
+                                        </button>
+                                    </div>
+
+                                    {/* Profile Tab Content */}
+                                    {activeTab === "profile" && (
+                                    !user ? (
+                                        <ProfileInfoSkeleton />
+                                    ) : (
                                     <div className="mt-6 grid gap-4">
                                         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6">
                                             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
@@ -367,12 +485,174 @@ const ProfilePage: React.FC = () => {
                                             </a>
                                         </div>
                                     </div>
+                                    )
+                                    )}
+
+                                    {/* Posts Tab Content */}
+                                    {activeTab === "posts" && (
+                                    <div className="mt-6 grid gap-4">
+                                        {loadingPosts ? (
+                                            <ProfilePostsSkeleton />
+                                        ) : posts.length === 0 ? (
+                                            <div className="text-center py-12">
+                                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/5 border border-white/10 mb-4">
+                                                    <ImageIcon className="h-8 w-8 text-white/40" />
+                                                </div>
+                                                <h3 className="text-white font-semibold text-lg mb-2">No posts yet</h3>
+                                                <p className="text-white/60 text-sm mb-6">Start sharing your thoughts with the community</p>
+                                                <button
+                                                    onClick={() => navigate("/home")}
+                                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition-colors border border-white/10"
+                                                >
+                                                    Go to Feed
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                {posts.map((post) => (
+                                                    <div
+                                                        key={post.id}
+                                                        className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.05] transition-all"
+                                                    >
+                                                        <div className="absolute inset-px rounded-[0.7rem] bg-gradient-to-b from-white/5 to-white/0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        
+                                                        {/* Delete Button */}
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                setDeleteConfirmId(post.id)
+                                                            }}
+                                                            className="absolute top-2 right-2 z-10 p-2 rounded-lg bg-red-500/90 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-all shadow-lg backdrop-blur-sm"
+                                                            aria-label="Delete post"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                        
+                                                        <div onClick={() => navigate(`/post/${post.id}`)} className="cursor-pointer">
+                                                        
+                                                        {/* Post Image/Thumbnail */}
+                                                        {post.images && post.images.length > 0 ? (
+                                                            <div className="relative aspect-video overflow-hidden">
+                                                                <img
+                                                                    src={post.images[0]}
+                                                                    alt={post.title}
+                                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                                                />
+                                                                {post.images.length > 1 && (
+                                                                    <div className="absolute top-2 right-2 px-2 py-1 rounded-md bg-black/70 backdrop-blur-sm text-white text-xs font-medium">
+                                                                        +{post.images.length - 1}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="relative aspect-video bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center">
+                                                                <ImageIcon className="h-12 w-12 text-white/20" />
+                                                            </div>
+                                                        )}
+
+                                                        {/* Post Content */}
+                                                        <div className="relative p-4">
+                                                            <h3 className="text-white font-semibold text-base line-clamp-2 mb-2 group-hover:text-blue-400 transition-colors">
+                                                                {post.title}
+                                                            </h3>
+                                                            <p className="text-white/60 text-sm line-clamp-2 mb-3">
+                                                                {post.description}
+                                                            </p>
+
+                                                            {/* Post Meta */}
+                                                            <div className="flex items-center justify-between text-xs text-white/50">
+                                                                <span>{dayjs(post.created_at).fromNow()}</span>
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="inline-flex items-center gap-1">
+                                                                        <Heart className="h-3.5 w-3.5" />
+                                                                        <span>{post.likes_count || 0}</span>
+                                                                    </div>
+                                                                    <div className="inline-flex items-center gap-1">
+                                                                        <MessageCircle className="h-3.5 w-3.5" />
+                                                                        <span>{post.comments_count || 0}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
                     </main>
                 </div>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            {deleteConfirmId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-black/90 backdrop-blur-xl shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="absolute inset-px rounded-[1rem] bg-gradient-to-b from-white/5 to-white/0 pointer-events-none" />
+                        
+                        <div className="relative p-6">
+                            {/* Close button */}
+                            <button
+                                onClick={() => setDeleteConfirmId(null)}
+                                className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+                                disabled={deleting}
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+
+                            {/* Icon */}
+                            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 mb-4">
+                                <Trash2 className="h-6 w-6 text-red-500" />
+                            </div>
+
+                            {/* Title */}
+                            <h3 className="text-xl font-bold text-white mb-2">
+                                Delete Post?
+                            </h3>
+
+                            {/* Description */}
+                            <p className="text-white/60 text-sm mb-6">
+                                Are you sure you want to delete this post? This action cannot be undone and all comments and likes will be permanently removed.
+                            </p>
+
+                            {/* Actions */}
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setDeleteConfirmId(null)}
+                                    disabled={deleting}
+                                    className="flex-1 px-4 py-2.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => handleDeletePost(deleteConfirmId)}
+                                    disabled={deleting}
+                                    className="flex-1 px-4 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    {deleting ? (
+                                        <>
+                                            <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            <span>Deleting...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Trash2 className="h-4 w-4" />
+                                            <span>Delete</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Bottom Bar for mobile */}
+            <BottomBar />
         </div>
     )
 }

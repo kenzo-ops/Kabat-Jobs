@@ -8,7 +8,7 @@ const LoginPage = () => {
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: `${window.location.origin}`,
+                redirectTo: `${window.location.origin}/home`,
             },
         })
         if (error) console.error("Failed to log in through google, message", error)

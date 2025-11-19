@@ -1,9 +1,16 @@
 import React, { useEffect, useState, useRef, useCallback, memo } from "react";
-import { Heart, MessageCircle, Share2, MoreVertical, ExternalLink } from "lucide-react";
+import { Heart, MessageCircle, Share2, MoreVertical, ExternalLink, Bookmark, BookmarkCheck } from "lucide-react";
 import { useNavigate } from "react-router";
 import supabase from "@/supabase-client";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { PostSkeletonList } from "./skeletons/PostSkeleton";
 
 dayjs.extend(relativeTime);
 
@@ -35,18 +42,22 @@ const POSTS_PER_PAGE = 10;
 const PostItem = memo<{
   post: Post;
   isLiked: boolean;
+  isSaved: boolean;
   onImageClick: (url: string) => void;
   onLikeClick: (postId: string) => void;
   onPostClick: (postId: string) => void;
+  onSaveToggle: (postId: string) => void;
   getAvatarUrl: (post: Post) => string | null;
   getUserInitials: (post: Post) => string;
   getDisplayName: (post: Post) => string;
 }>(({ 
   post, 
   isLiked, 
+  isSaved,
   onImageClick, 
   onLikeClick, 
   onPostClick,
+  onSaveToggle,
   getAvatarUrl, 
   getUserInitials, 
   getDisplayName 
@@ -111,12 +122,38 @@ const PostItem = memo<{
               </p>
             </div>
           </div>
-          <button
-            className="flex-shrink-0 p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-            aria-label="More options"
-          >
-            <MoreVertical className="h-4 w-4" />
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex-shrink-0 p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+                aria-label="More options"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-black/90 backdrop-blur-xl border-white/10">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSaveToggle(post.id);
+                }}
+                className="text-white/80 hover:text-white hover:bg-white/10 cursor-pointer"
+              >
+                {isSaved ? (
+                  <>
+                    <BookmarkCheck className="h-4 w-4 mr-2 text-amber-500" />
+                    <span>Unsave Post</span>
+                  </>
+                ) : (
+                  <>
+                    <Bookmark className="h-4 w-4 mr-2" />
+                    <span>Save Post</span>
+                  </>
+                )}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Post Title */}
@@ -242,6 +279,7 @@ const PostList: React.FC<PostListProps> = () => {
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string>("");
   const [userLikes, setUserLikes] = useState<Set<string>>(new Set());
+  const [userSavedPosts, setUserSavedPosts] = useState<Set<string>>(new Set());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const observerTarget = useRef<HTMLDivElement>(null);
 
@@ -339,6 +377,16 @@ const PostList: React.FC<PostListProps> = () => {
         
         if (likesData) {
           setUserLikes(new Set(likesData.map((item: any) => item.post_id)));
+        }
+
+        // Fetch user saved posts
+        const { data: savedData } = await supabase
+          .from("saved_posts")
+          .select("post_id")
+          .eq("user_id", user.id);
+        
+        if (savedData) {
+          setUserSavedPosts(new Set(savedData.map((item: any) => item.post_id)));
         }
       }
     };
@@ -533,19 +581,81 @@ const PostList: React.FC<PostListProps> = () => {
   }, [currentUserId, userLikes]);
 
   // ====================================
+  // SAVE/UNSAVE HANDLER
+  // ====================================
+  const handleSaveToggle = useCallback(async (postId: string) => {
+    if (!currentUserId) {
+      alert("Please login to save posts");
+      return;
+    }
+
+    try {
+      const wasSaved = userSavedPosts.has(postId);
+      const newSavedPosts = new Set(userSavedPosts);
+
+      // Optimistic update
+      if (wasSaved) {
+        newSavedPosts.delete(postId);
+      } else {
+        newSavedPosts.add(postId);
+      }
+      setUserSavedPosts(newSavedPosts);
+
+      if (wasSaved) {
+        // Unsave post
+        const { error } = await supabase
+          .from("saved_posts")
+          .delete()
+          .eq("user_id", currentUserId)
+          .eq("post_id", postId);
+
+        if (error) {
+          // Revert on error
+          setUserSavedPosts(userSavedPosts);
+          console.error("Error unsaving post:", error);
+          alert("Failed to unsave post");
+        }
+      } else {
+        // Save post
+        const { error } = await supabase
+          .from("saved_posts")
+          .insert({
+            user_id: currentUserId,
+            post_id: postId
+          });
+
+        if (error) {
+          // Revert on error
+          setUserSavedPosts(userSavedPosts);
+          console.error("Error saving post:", error);
+          alert("Failed to save post");
+        }
+      }
+    } catch (error) {
+      console.error("Error in handleSaveToggle:", error);
+    }
+  }, [currentUserId, userSavedPosts]);
+
+  // ====================================
   // RENDER
   // ====================================
   return (
     <>
       <div className="space-y-4 sm:space-y-6">
+        {/* Initial loading skeleton */}
+        {loading && post.length === 0 && <PostSkeletonList count={3} />}
+
+        {/* Posts list */}
         {post.map((pos) => (
           <PostItem
             key={pos.id}
             post={pos}
             isLiked={userLikes.has(pos.id)}
+            isSaved={userSavedPosts.has(pos.id)}
             onImageClick={openImageModal}
             onLikeClick={handleLikeClick}
             onPostClick={handlePostClick}
+            onSaveToggle={handleSaveToggle}
             getAvatarUrl={getAvatarUrl}
             getUserInitials={getUserInitials}
             getDisplayName={getDisplayName}
@@ -555,8 +665,8 @@ const PostList: React.FC<PostListProps> = () => {
         {/* Infinite scroll trigger */}
         <div ref={observerTarget} className="h-4" />
 
-        {/* Loading indicator */}
-        {loading && (
+        {/* Loading more indicator */}
+        {loading && post.length > 0 && (
           <div className="flex justify-center items-center py-8">
             <div className="text-white/60 text-sm">Memuat lebih banyak...</div>
           </div>

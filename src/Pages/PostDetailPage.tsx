@@ -2,12 +2,13 @@
 // PostDetailPage.tsx - Pages/PostDetailPage.tsx
 // ============================================
 import React, { useEffect, useState, useCallback } from "react";
-import { Heart, MessageCircle, Share2, ArrowLeft, ExternalLink, MoreVertical, Send } from "lucide-react";
+import { Heart, MessageCircle, Share2, ArrowLeft, ExternalLink, MoreVertical, Send, Image as ImageIcon, X } from "lucide-react";
 import { useParams, useNavigate } from "react-router";
 import supabase from "@/supabase-client";
 import DarkVeil from "@/components/DarkVeil";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { PostDetailSkeleton } from "@/custom-components/skeletons/PostDetailSkeleton";
 
 dayjs.extend(relativeTime);
 
@@ -30,6 +31,7 @@ type Post = {
 type Comment = {
   id: string;
   content: string;
+  image_url?: string | null;
   created_at: string;
   user_id?: string;
   user_name?: string | null;
@@ -51,6 +53,8 @@ const PostDetailPage: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<string>("");
   const [newComment, setNewComment] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [commentImage, setCommentImage] = useState<File | null>(null);
+  const [commentImagePreview, setCommentImagePreview] = useState<string | null>(null);
 
   // Fetch post detail
   useEffect(() => {
@@ -157,9 +161,67 @@ const PostDetailPage: React.FC = () => {
     }
   }, [currentUserId, isLiked, post, postId]);
 
+  const handleCommentImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Image size should be less than 5MB");
+        return;
+      }
+      setCommentImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCommentImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveCommentImage = () => {
+    setCommentImage(null);
+    setCommentImagePreview(null);
+  };
+
+  const uploadCommentImage = async (file: File): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `comment-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("image-post")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error("Error uploading image:", uploadError);
+        const msg = String(uploadError.message || uploadError);
+        if (msg.toLowerCase().includes("not found") || msg.toLowerCase().includes("does not exist")) {
+          alert("Storage bucket 'image-post' tidak ditemukan. Pastikan bucket sudah dibuat di Supabase.");
+        } else if (msg.toLowerCase().includes("policy") || msg.toLowerCase().includes("denied")) {
+          alert("Akses ditolak. Pastikan bucket policy mengizinkan authenticated users untuk upload.");
+        } else {
+          alert(`Upload error: ${msg}`);
+        }
+        return null;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("image-post")
+        .getPublicUrl(fileName);
+
+      return publicUrl;
+    } catch (error: any) {
+      console.error("Error uploading image:", error);
+      alert(error.message || "Terjadi kesalahan saat upload gambar.");
+      return null;
+    }
+  };
+
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim() || !currentUserId || !postId) {
+    if ((!newComment.trim() && !commentImage) || !currentUserId || !postId) {
       if (!currentUserId) {
         alert("Please login to comment");
       }
@@ -168,10 +230,21 @@ const PostDetailPage: React.FC = () => {
 
     setIsSubmittingComment(true);
     try {
-      const { data: commentData, error } = await supabase.rpc("add_comment", {
+      let imageUrl: string | null = null;
+
+      if (commentImage) {
+        imageUrl = await uploadCommentImage(commentImage);
+        if (!imageUrl) {
+          alert("Failed to upload image. Please try again.");
+          return;
+        }
+      }
+
+      const { data: commentData, error } = await supabase.rpc("add_comment_with_image", {
         p_post_id: parseInt(postId),
         p_user_id: currentUserId,
-        p_content: newComment.trim()
+        p_content: newComment.trim() || "",
+        p_image_url: imageUrl
       });
 
       if (error) {
@@ -183,6 +256,8 @@ const PostDetailPage: React.FC = () => {
       if (commentData && commentData.length > 0) {
         setComments(prev => [commentData[0], ...prev]);
         setNewComment("");
+        setCommentImage(null);
+        setCommentImagePreview(null);
         
         setPost(prev => prev ? {
           ...prev,
@@ -229,8 +304,8 @@ const PostDetailPage: React.FC = () => {
         <div className="fixed inset-0 -z-20">
           <DarkVeil />
         </div>
-        <div className="relative z-10 flex items-center justify-center min-h-screen">
-          <div className="text-white/60 text-sm">Loading...</div>
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <PostDetailSkeleton />
         </div>
       </div>
     );
@@ -412,33 +487,67 @@ const PostDetailPage: React.FC = () => {
 
             {/* Comment Input */}
             <div className="mb-6">
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSubmitComment(e);
-                    }
-                  }}
-                  placeholder="Write a comment..."
-                  className="flex-1 rounded-xl bg-white/5 text-white placeholder:text-white/40 border border-white/10 focus:border-white/20 focus:ring-2 focus:ring-white/20 outline-none px-4 py-3 text-sm"
-                  disabled={isSubmittingComment}
-                />
-                <button
-                  onClick={handleSubmitComment}
-                  disabled={!newComment.trim() || isSubmittingComment}
-                  className="inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-medium transition-colors border border-white/10 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:opacity-50 disabled:cursor-not-allowed bg-white/10 hover:bg-white/15 text-white"
-                >
-                  {isSubmittingComment ? (
-                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
+              <form onSubmit={handleSubmitComment}>
+                {/* Image Preview */}
+                {commentImagePreview && (
+                  <div className="mb-3 relative inline-block">
+                    <div className="relative rounded-lg overflow-hidden border border-white/10 bg-white/5">
+                      <img
+                        src={commentImagePreview}
+                        alt="Preview"
+                        className="max-w-xs max-h-48 object-contain"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveCommentImage}
+                        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 hover:bg-black/90 text-white transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSubmitComment(e);
+                      }
+                    }}
+                    placeholder="Write a comment..."
+                    className="flex-1 rounded-xl bg-white/5 text-white placeholder:text-white/40 border border-white/10 focus:border-white/20 focus:ring-2 focus:ring-white/20 outline-none px-4 py-3 text-sm"
+                    disabled={isSubmittingComment}
+                  />
+                  
+                  <label className="inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-medium transition-colors border border-white/10 shadow-sm cursor-pointer bg-white/10 hover:bg-white/15 text-white disabled:opacity-50 disabled:cursor-not-allowed">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleCommentImageChange}
+                      className="hidden"
+                      disabled={isSubmittingComment}
+                    />
+                    <ImageIcon className="h-4 w-4" />
+                  </label>
+                  
+                  <button
+                    type="submit"
+                    disabled={(!newComment.trim() && !commentImage) || isSubmittingComment}
+                    className="inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-medium transition-colors border border-white/10 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:opacity-50 disabled:cursor-not-allowed bg-white/10 hover:bg-white/15 text-white"
+                  >
+                    {isSubmittingComment ? (
+                      <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
 
             {/* Comments List */}
@@ -483,9 +592,27 @@ const PostDetailPage: React.FC = () => {
                               {dayjs(comment.created_at).fromNow()}
                             </span>
                           </div>
-                          <p className="text-white/80 text-sm leading-relaxed">
-                            {comment.content}
-                          </p>
+                          {comment.content && (
+                            <p className="text-white/80 text-sm leading-relaxed mb-2">
+                              {comment.content}
+                            </p>
+                          )}
+                          {comment.image_url && (
+                            <div
+                              className="mt-2 rounded-lg overflow-hidden border border-white/10 cursor-pointer hover:opacity-90 transition-opacity max-w-sm"
+                              onClick={() => {
+                                setSelectedImage(comment.image_url!);
+                                setImageModalOpen(true);
+                              }}
+                            >
+                              <img
+                                src={comment.image_url}
+                                alt="Comment attachment"
+                                className="w-full h-auto object-cover"
+                                loading="lazy"
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
