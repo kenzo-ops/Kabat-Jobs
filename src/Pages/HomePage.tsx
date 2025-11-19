@@ -13,7 +13,7 @@ const HomePage = () => {
 
     useEffect(() => {
         const handleSession = async () => {
-        const { data, error } = await supabase.auth.getSession()
+        const { data } = await supabase.auth.getSession()
         if (!data.session) {
             // Jika nggak ada session, paksa balik ke login
             navigate('/login')
