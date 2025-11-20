@@ -163,7 +163,7 @@ const Footer = () => {
                 Get the latest job opportunities and career tips delivered to your inbox
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full md:w-auto">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full md:w-auto max-w-full">
               <input
                 type="email"
                 placeholder="Enter your email"
@@ -181,6 +181,7 @@ const Footer = () => {
                   focus:ring-blue-500/20 
                   transition-all
                   text-sm sm:text-base
+                  w-full
                 "
               />
               <button

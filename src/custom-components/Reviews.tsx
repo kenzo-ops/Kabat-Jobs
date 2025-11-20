@@ -65,16 +65,16 @@ const faqs = [
 const Reviews = () => {
   return (
     <>
-      <div className="relative flex flex-col items-center justify-center w-full bg-gray-900 shadow-[0_-5px_60px_0_rgba(59,130,246,0.6)] overflow-hidden py-20 px-8">
+      <div className="relative flex flex-col items-center justify-center w-full bg-gray-900 shadow-[0_-5px_60px_0_rgba(59,130,246,0.6)] overflow-hidden py-12 sm:py-20 px-4 sm:px-8">
         {/* Customer Reviews Section */}
-        <div className="flex justify-center mb-16">
-          <p className="text-secondary text-5xl font-semibold tracking-tight font-poppins">
+        <div className="flex justify-center mb-12 sm:mb-16">
+          <p className="text-secondary text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight font-poppins text-center px-2">
             Customer Reviews
           </p>
         </div>
 
         {/* Reviews Grid */}
-        <div className="relative z-20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-7xl px-4 mb-20">
+        <div className="relative z-20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8 w-full max-w-7xl px-2 sm:px-4 mb-12 sm:mb-20">
           {reviews.map((review) => (
             <SpotlightCard
               key={review.id}
@@ -127,14 +127,14 @@ const Reviews = () => {
         <div className="w-full max-w-4xl h-px bg-gray-700 mb-16"></div>
 
         {/* FAQ Section */}
-        <div className="flex justify-center mb-12">
-          <p className="text-secondary text-5xl font-semibold tracking-tight font-poppins">
+        <div className="flex justify-center mb-8 sm:mb-12">
+          <p className="text-secondary text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight font-poppins text-center px-2">
             Frequently Asked Questions
           </p>
         </div>
 
         {/* FAQ Accordion */}
-        <div className="relative z-20 w-full max-w-4xl px-4">
+        <div className="relative z-20 w-full max-w-4xl px-2 sm:px-4">
           <Accordion type="single" collapsible className="w-full">
             {faqs.map((faq) => (
               <AccordionItem 

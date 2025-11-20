@@ -9,7 +9,7 @@ function Hero({ title = '', subtitle = '' }) {
 
             {/* Spotlight Decorative */}
             <div className="pointer-events-none absolute inset-0 -z-10">
-              <div className="absolute left-1/2 top-0 h-[350px] sm:h-[420px] w-[520px] sm:w-[720px] -translate-x-1/2 rounded-full bg-white/0" />
+              <div className="absolute left-1/2 top-0 h-[350px] sm:h-[420px] w-[280px] sm:w-[520px] md:w-[720px] -translate-x-1/2 rounded-full bg-white/0" />
             </div>
 
             {/* Glass Card */}

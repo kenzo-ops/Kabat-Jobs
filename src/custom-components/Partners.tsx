@@ -28,7 +28,7 @@ const techLogos = [
 const Partners = () => {
   return (
     <>
-      <div className="relative flex flex-col items-center justify-center w-full bg-gray-900 rounded-t-3xl shadow-[0_-5px_60px_0_rgba(59,130,246,0.6)] overflow-hidden py-8 sm:py-10 md:py-12 lg:py-14 px-4 sm:px-6 md:px-8">
+      <div className="relative flex flex-col items-center justify-center w-full bg-gray-900 rounded-t-3xl shadow-[0_-5px_60px_0_rgba(59,130,246,0.6)] overflow-hidden py-8 sm:py-10 md:py-12 lg:py-14 px-2 sm:px-6 md:px-8">
         <div className="flex justify-center mb-8 sm:mb-10">
           <p className="text-secondary text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-center px-4">
             Our Partners
@@ -57,9 +57,9 @@ const Partners = () => {
           className="
             relative z-20 grid 
             grid-cols-1 sm:grid-cols-2 lg:grid-cols-4
-            gap-6 w-full
+            gap-3 sm:gap-6 w-full
             auto-rows-[200px] sm:auto-rows-[250px] lg:auto-rows-[280px]
-            px-4 sm:px-6 lg:px-10
+            px-2 sm:px-6 lg:px-10
           "
         >
           {/* Card 1 */}

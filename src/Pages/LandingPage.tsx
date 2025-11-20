@@ -7,7 +7,7 @@ import Footer from '../custom-components/Footer'
 
 const LandingPage = () => {
   return (
-    <div className="relative min-h-screen bg-black">
+    <div className="relative min-h-screen bg-black overflow-x-hidden">
       <div className="fixed inset-0 z-0 pointer-events-none">
         <DarkVeil />
       </div>

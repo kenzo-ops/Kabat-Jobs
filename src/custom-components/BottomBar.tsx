@@ -60,14 +60,14 @@ const BottomBar: React.FC = () => {
         <div className="absolute inset-px rounded-[1rem] bg-gradient-to-t from-white/5 to-white/0 pointer-events-none" />
         
         {/* Navigation items */}
-        <nav className="relative flex items-center justify-around px-2 py-3">
+        <nav className="relative flex items-center justify-around px-1 py-3">
           {navItems.map((item) => {
             const active = isActive(item.href);
             return (
               <button
                 key={item.href}
                 onClick={() => handleNavigation(item.href)}
-                className={`flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-xl transition-all duration-200 ${
+                className={`flex flex-col items-center justify-center gap-1 px-2 py-2 rounded-xl transition-all duration-200 min-w-0 flex-1 ${
                   active
                     ? "bg-white/10 text-white scale-105"
                     : "text-white/60 hover:text-white hover:bg-white/5"
@@ -76,7 +76,7 @@ const BottomBar: React.FC = () => {
                 <div className={`transition-transform duration-200 ${active ? "scale-110" : ""}`}>
                   {item.icon}
                 </div>
-                <span className={`text-xs font-medium ${active ? "font-semibold" : ""}`}>
+                <span className={`text-[10px] sm:text-xs font-medium truncate max-w-full ${active ? "font-semibold" : ""}`}>
                   {item.label}
                 </span>
                 {active && (
