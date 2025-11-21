@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react"
+import { toast } from "react-toastify"
 import DarkVeil from "@/components/DarkVeil"
 import Sidebar from "@/custom-components/Sidebar"
 import BottomBar from "@/custom-components/BottomBar"
@@ -46,7 +47,7 @@ const ProfilePage: React.FC = () => {
 
             // Validate file size (max 2MB)
             if (file.size > 2 * 1024 * 1024) {
-                alert("File terlalu besar. Maksimal ukuran file adalah 2MB")
+                toast.error("File terlalu besar. Maksimal ukuran file adalah 2MB")
                 return
             }
 
@@ -58,7 +59,7 @@ const ProfilePage: React.FC = () => {
                 "image/webp",
             ]
             if (!allowedTypes.includes(file.type)) {
-                alert(
+                toast.error(
                     "Tipe file tidak didukung. Gunakan format JPG, PNG, GIF, atau WEBP"
                 )
                 return
@@ -100,7 +101,7 @@ const ProfilePage: React.FC = () => {
                     msg.toLowerCase().includes("not found") ||
                     msg.toLowerCase().includes("does not exist")
                 ) {
-                    alert(
+                    toast.error(
                         "Storage bucket 'avatars' tidak ditemukan di project Supabase. Pastikan Anda sudah membuat bucket dengan nama 'avatars' dan memberikan policy yang sesuai."
                     )
                     return
@@ -110,13 +111,13 @@ const ProfilePage: React.FC = () => {
                     msg.toLowerCase().includes("permission") ||
                     msg.toLowerCase().includes("denied")
                 ) {
-                    alert(
+                    toast.error(
                         "Akses ditolak. Pastikan bucket policy mengizinkan authenticated users untuk mengupload file dan bucket tidak menolak request dari client."
                     )
                     return
                 }
 
-                alert(`Upload gagal: ${msg}`)
+                toast.error(`Upload gagal: ${msg}`)
                 return
             }
 
@@ -136,12 +137,14 @@ const ProfilePage: React.FC = () => {
             if (updateError) {
                 throw updateError
             }
+
+            toast.success("Profile photo updated successfully!")
         } catch (error: any) {
             console.error("Error uploading image:", error)
             if (error.message) {
-                alert(`Error: ${error.message}`)
+                toast.error(`Error: ${error.message}`)
             } else {
-                alert(
+                toast.error(
                     "Terjadi kesalahan saat mengupload gambar. Silakan coba lagi."
                 )
             }
@@ -189,7 +192,7 @@ const ProfilePage: React.FC = () => {
 
         if (error) {
             console.error("Error deleting post:", error)
-            alert("Failed to delete post. Please try again.")
+            toast.error("Failed to delete post. Please try again.")
             return
         }
 
@@ -199,15 +202,14 @@ const ProfilePage: React.FC = () => {
                 // Remove from UI
                 setPosts(posts.filter(post => post.id !== postId))
                 setDeleteConfirmId(null)
-                // Optional: show success message
-                // alert(result.message)
+                toast.success("Post deleted successfully")
             } else {
-                alert(result.message)
+                toast.error(result.message)
             }
         }
     } catch (error) {
         console.error("Error deleting post:", error)
-        alert("An error occurred while deleting the post.")
+        toast.error("An error occurred while deleting the post.")
     } finally {
         setDeleting(false)
     }

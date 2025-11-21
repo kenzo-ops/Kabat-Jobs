@@ -14,6 +14,8 @@ import PostDetailPage from './Pages/PostDetailPage.tsx'
 import AuthCallbackPage from './Pages/AuthCallback.tsx'
 import SavedPostsPage from './Pages/SavedPostsPage.tsx'
 import FriendsPage from './Pages/FriendsPage.tsx'
+import UserProfilePage from './Pages/UserProfilePage.tsx'
+import InboxPage from './Pages/InboxPage.tsx'
 
 const router = createBrowserRouter([
   {
@@ -24,6 +26,10 @@ const router = createBrowserRouter([
   {
     path: '/home',
     element: <HomePage/>
+  },
+  {
+    path: '/user/:userId',
+    element: <UserProfilePage/>
   },
   {
     path: '/login',
@@ -48,6 +54,10 @@ const router = createBrowserRouter([
   {
     path: '/friends',
     element: <FriendsPage/>
+  },
+  {
+    path: '/inbox',
+    element: <InboxPage/>
   },
   {
     path: '/auth/callback',

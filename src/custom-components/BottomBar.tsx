@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router";
-import { Home, Briefcase, Bookmark, Users, Settings } from "lucide-react";
+import { Home, Bell, Bookmark, Users, Settings } from "lucide-react";
 
 type NavItem = {
   label: string;
@@ -24,14 +24,14 @@ const BottomBar: React.FC = () => {
       icon: <Users className="h-5 w-5" />,
     },
     {
+      label: "Inbox",
+      href: "/inbox",
+      icon: <Bell className="h-5 w-5" />,
+    },
+    {
       label: "Saved",
       href: "/saved-jobs",
       icon: <Bookmark className="h-5 w-5" />,
-    },
-    {
-      label: "Jobs",
-      href: "#applications",
-      icon: <Briefcase className="h-5 w-5" />,
     },
     {
       label: "Settings",

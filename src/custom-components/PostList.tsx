@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, memo } from "react";
 import { Heart, MessageCircle, Share2, MoreVertical, ExternalLink, Bookmark, BookmarkCheck } from "lucide-react";
 import { useNavigate } from "react-router";
+import { toast } from "react-toastify";
 import supabase from "@/supabase-client";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -47,6 +48,7 @@ const PostItem = memo<{
   onLikeClick: (postId: string) => void;
   onPostClick: (postId: string) => void;
   onSaveToggle: (postId: string) => void;
+  onUserClick: (userId: string) => void;
   getAvatarUrl: (post: Post) => string | null;
   getUserInitials: (post: Post) => string;
   getDisplayName: (post: Post) => string;
@@ -58,6 +60,7 @@ const PostItem = memo<{
   onLikeClick, 
   onPostClick,
   onSaveToggle,
+  onUserClick,
   getAvatarUrl, 
   getUserInitials, 
   getDisplayName 
@@ -90,7 +93,16 @@ const PostItem = memo<{
       <div className="relative p-5 sm:p-6">
         {/* Post Header */}
         <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div 
+            className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (post.user_id) {
+                onUserClick(post.user_id);
+              }
+            }}
+            data-no-navigate
+          >
             <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/10 overflow-hidden">
               {avatarUrl ? (
                 <img
@@ -311,10 +323,14 @@ const PostList: React.FC<PostListProps> = () => {
   }, []);
 
   // ====================================
-  // NAVIGATION HANDLER
+  // NAVIGATION HANDLERS
   // ====================================
   const handlePostClick = useCallback((postId: string) => {
     navigate(`/post/${postId}`);
+  }, [navigate]);
+
+  const handleUserClick = useCallback((userId: string) => {
+    navigate(`/user/${userId}`);
   }, [navigate]);
 
   // ====================================
@@ -529,7 +545,7 @@ const PostList: React.FC<PostListProps> = () => {
   // ====================================
   const handleLikeClick = useCallback(async (postId: string) => {
     if (!currentUserId) {
-      alert("Please login to like posts");
+      toast.error("Please login to like posts");
       return;
     }
 
@@ -585,7 +601,7 @@ const PostList: React.FC<PostListProps> = () => {
   // ====================================
   const handleSaveToggle = useCallback(async (postId: string) => {
     if (!currentUserId) {
-      alert("Please login to save posts");
+      toast.error("Please login to save posts");
       return;
     }
 
@@ -613,7 +629,9 @@ const PostList: React.FC<PostListProps> = () => {
           // Revert on error
           setUserSavedPosts(userSavedPosts);
           console.error("Error unsaving post:", error);
-          alert("Failed to unsave post");
+          toast.error("Failed to unsave post");
+        } else {
+          toast.success("Post unsaved successfully");
         }
       } else {
         // Save post
@@ -628,7 +646,9 @@ const PostList: React.FC<PostListProps> = () => {
           // Revert on error
           setUserSavedPosts(userSavedPosts);
           console.error("Error saving post:", error);
-          alert("Failed to save post");
+          toast.error("Failed to save post");
+        } else {
+          toast.success("Post saved successfully");
         }
       }
     } catch (error) {
@@ -656,6 +676,7 @@ const PostList: React.FC<PostListProps> = () => {
             onLikeClick={handleLikeClick}
             onPostClick={handlePostClick}
             onSaveToggle={handleSaveToggle}
+            onUserClick={handleUserClick}
             getAvatarUrl={getAvatarUrl}
             getUserInitials={getUserInitials}
             getDisplayName={getDisplayName}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FiMenu, FiX } from 'react-icons/fi';
-import { Home, LogOut } from 'lucide-react';
+import { Home, LogOut, Bell } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import supabase from '@/supabase-client';
 import {
@@ -156,7 +156,7 @@ const Navbar = () => {
         </h1>
 
         {/* DESKTOP MENU */}
-        <div className="hidden md:flex gap-4 lg:gap-7 mx-3">
+        <div className="hidden md:flex gap-4 lg:gap-7 mx-3 items-center">
           <Link to="/home" className={`${linkHover} text-sm lg:text-base`}>
             Homes
           </Link>
@@ -169,6 +169,11 @@ const Navbar = () => {
           <a href="#FAQ" className={`${linkHover} text-sm lg:text-base`}>
             FAQ
           </a>
+          {user && (
+            <Link to="/inbox" className="relative p-2 rounded-lg hover:bg-white/10 transition-colors">
+              <Bell className="h-5 w-5 text-white" />
+            </Link>
+          )}
         </div>
 
         {/* DESKTOP AUTH BUTTONS / USER AVATAR */}
@@ -205,6 +210,13 @@ const Navbar = () => {
                     >
                       <Home className="h-4 w-4 mr-2" />
                       <span>Feeds</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => navigate('/inbox')}
+                      className="text-white/80 hover:text-white hover:bg-white/10 cursor-pointer"
+                    >
+                      <Bell className="h-4 w-4 mr-2" />
+                      <span>Inbox</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-white/10" />
                     <DropdownMenuItem

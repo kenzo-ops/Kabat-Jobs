@@ -4,6 +4,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Heart, MessageCircle, Share2, ArrowLeft, ExternalLink, MoreVertical, Send, Image as ImageIcon, X } from "lucide-react";
 import { useParams, useNavigate } from "react-router";
+import { toast } from "react-toastify";
 import supabase from "@/supabase-client";
 import DarkVeil from "@/components/DarkVeil";
 import dayjs from "dayjs";
@@ -121,7 +122,7 @@ const PostDetailPage: React.FC = () => {
 
   const handleLikeClick = useCallback(async () => {
     if (!currentUserId || !post) {
-      alert("Please login to like posts");
+      toast.error("Please login to like posts");
       return;
     }
 
@@ -165,7 +166,7 @@ const PostDetailPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert("Image size should be less than 5MB");
+        toast.error("Image size should be less than 5MB");
         return;
       }
       setCommentImage(file);
@@ -198,11 +199,11 @@ const PostDetailPage: React.FC = () => {
         console.error("Error uploading image:", uploadError);
         const msg = String(uploadError.message || uploadError);
         if (msg.toLowerCase().includes("not found") || msg.toLowerCase().includes("does not exist")) {
-          alert("Storage bucket 'image-post' tidak ditemukan. Pastikan bucket sudah dibuat di Supabase.");
+          toast.error("Storage bucket 'image-post' tidak ditemukan. Pastikan bucket sudah dibuat di Supabase.");
         } else if (msg.toLowerCase().includes("policy") || msg.toLowerCase().includes("denied")) {
-          alert("Akses ditolak. Pastikan bucket policy mengizinkan authenticated users untuk upload.");
+          toast.error("Akses ditolak. Pastikan bucket policy mengizinkan authenticated users untuk upload.");
         } else {
-          alert(`Upload error: ${msg}`);
+          toast.error(`Upload error: ${msg}`);
         }
         return null;
       }
@@ -214,7 +215,7 @@ const PostDetailPage: React.FC = () => {
       return publicUrl;
     } catch (error: any) {
       console.error("Error uploading image:", error);
-      alert(error.message || "Terjadi kesalahan saat upload gambar.");
+      toast.error(error.message || "Terjadi kesalahan saat upload gambar.");
       return null;
     }
   };
@@ -223,7 +224,7 @@ const PostDetailPage: React.FC = () => {
     e.preventDefault();
     if ((!newComment.trim() && !commentImage) || !currentUserId || !postId) {
       if (!currentUserId) {
-        alert("Please login to comment");
+        toast.error("Please login to comment");
       }
       return;
     }
@@ -235,7 +236,7 @@ const PostDetailPage: React.FC = () => {
       if (commentImage) {
         imageUrl = await uploadCommentImage(commentImage);
         if (!imageUrl) {
-          alert("Failed to upload image. Please try again.");
+          toast.error("Failed to upload image. Please try again.");
           return;
         }
       }
@@ -249,7 +250,7 @@ const PostDetailPage: React.FC = () => {
 
       if (error) {
         console.error("Error adding comment:", error);
-        alert("Failed to add comment. Please try again.");
+        toast.error("Failed to add comment. Please try again.");
         return;
       }
 
@@ -263,10 +264,12 @@ const PostDetailPage: React.FC = () => {
           ...prev,
           comments_count: (prev.comments_count || 0) + 1
         } : null);
+        
+        toast.success("Comment added successfully");
       }
     } catch (error) {
       console.error("Error submitting comment:", error);
-      alert("Failed to add comment. Please try again.");
+      toast.error("Failed to add comment. Please try again.");
     } finally {
       setIsSubmittingComment(false);
     }
@@ -360,7 +363,14 @@ const PostDetailPage: React.FC = () => {
           <div className="relative p-6 sm:p-8">
             {/* Post Header */}
             <div className="flex items-start justify-between gap-4 mb-6">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div 
+                className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => {
+                  if (post.user_id) {
+                    navigate(`/user/${post.user_id}`);
+                  }
+                }}
+              >
                 <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/10 overflow-hidden">
                   {avatarUrl ? (
                     <img
@@ -567,7 +577,14 @@ const PostDetailPage: React.FC = () => {
 
                   return (
                     <div key={comment.id} className="flex gap-3">
-                      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/10 overflow-hidden">
+                      <div 
+                        className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/10 overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => {
+                          if (comment.user_id) {
+                            navigate(`/user/${comment.user_id}`);
+                          }
+                        }}
+                      >
                         {commentAvatarUrl ? (
                           <img
                             src={commentAvatarUrl}
@@ -585,7 +602,14 @@ const PostDetailPage: React.FC = () => {
                       <div className="flex-1 min-w-0">
                         <div className="rounded-xl bg-white/5 border border-white/10 px-4 py-3">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-white font-medium text-sm">
+                            <span 
+                              className="text-white font-medium text-sm cursor-pointer hover:text-blue-400 transition-colors"
+                              onClick={() => {
+                                if (comment.user_id) {
+                                  navigate(`/user/${comment.user_id}`);
+                                }
+                              }}
+                            >
                               {commentDisplayName}
                             </span>
                             <span className="text-white/40 text-xs">

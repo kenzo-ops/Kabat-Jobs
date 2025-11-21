@@ -1,10 +1,12 @@
 import React, { useEffect } from "react"
+import { toast } from "react-toastify"
+import { useNavigate } from "react-router"
 import DarkVeil from "@/components/DarkVeil"
 import Sidebar from "@/custom-components/Sidebar"
 import BottomBar from "@/custom-components/BottomBar"
 import supabase from "@/supabase-client"
 import type { User } from "@supabase/supabase-js"
-import { Users, UserPlus, Mail, MoreVertical, UserMinus, MessageCircle } from "lucide-react"
+import { Users, UserPlus, Mail, MoreVertical, UserMinus, MessageCircle, Search, X } from "lucide-react"
 import { FriendListSkeleton } from "@/custom-components/skeletons/FriendSkeleton"
 
 type Friend = {
@@ -17,10 +19,16 @@ type Friend = {
 }
 
 const FriendsPage: React.FC = () => {
+    const navigate = useNavigate()
     const [user, setUser] = React.useState<User | null>(null)
     const [friends, setFriends] = React.useState<Friend[]>([])
     const [loading, setLoading] = React.useState(true)
     const [activeMenu, setActiveMenu] = React.useState<string | null>(null)
+    const [showAddFriendModal, setShowAddFriendModal] = React.useState(false)
+    const [searchEmail, setSearchEmail] = React.useState("")
+    const [searchResults, setSearchResults] = React.useState<Friend[]>([])
+    const [searching, setSearching] = React.useState(false)
+    const [sendingRequest, setSendingRequest] = React.useState<string | null>(null)
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -43,21 +51,23 @@ const FriendsPage: React.FC = () => {
     }, [])
 
     useEffect(() => {
-        // Simulate loading friends data
-        // TODO: Replace with actual API call
         const loadFriends = async () => {
+            if (!user) return
+            
             setLoading(true)
             try {
-                // Placeholder: await fetch friends from backend
-                // const response = await supabase.rpc("get_user_friends", { p_user_id: user?.id })
+                const { data, error } = await supabase.rpc("get_user_friends", { 
+                    p_user_id: user.id 
+                })
                 
-                // Mock data for now
-                setTimeout(() => {
-                    setFriends([])
-                    setLoading(false)
-                }, 1000)
+                if (error) {
+                    console.error("Error loading friends:", error)
+                } else if (data) {
+                    setFriends(data)
+                }
             } catch (error) {
                 console.error("Error loading friends:", error)
+            } finally {
                 setLoading(false)
             }
         }
@@ -66,6 +76,61 @@ const FriendsPage: React.FC = () => {
             loadFriends()
         }
     }, [user])
+
+    const handleSearchUsers = async () => {
+        if (!searchEmail.trim() || !user) return
+
+        setSearching(true)
+        try {
+            const { data, error } = await supabase.rpc("get_user_profile", {
+                user_id_param: null
+            })
+
+            if (error) throw error
+
+            // Filter by email search
+            const filtered = data?.filter((u: Friend) => 
+                u.email.toLowerCase().includes(searchEmail.toLowerCase()) &&
+                u.id !== user.id
+            ) || []
+
+            setSearchResults(filtered)
+        } catch (error) {
+            console.error("Error searching users:", error)
+            toast.error("Failed to search users")
+        } finally {
+            setSearching(false)
+        }
+    }
+
+    const handleSendFriendRequest = async (friendId: string) => {
+        if (!user) return
+
+        setSendingRequest(friendId)
+        try {
+            const { error } = await supabase
+                .from("friends")
+                .insert({
+                    user_id: user.id,
+                    friend_id: friendId,
+                    status: "pending"
+                })
+
+            if (error) throw error
+
+            toast.success("Friend request sent!")
+            setSearchResults(searchResults.filter(u => u.id !== friendId))
+        } catch (error: any) {
+            console.error("Error sending friend request:", error)
+            if (error.code === "23505") {
+                toast.error("Friend request already sent")
+            } else {
+                toast.error("Failed to send friend request")
+            }
+        } finally {
+            setSendingRequest(null)
+        }
+    }
 
     const getAvatarSrc = (friend: Friend): string | null => {
         if (friend.custom_avatar_url) {
@@ -129,7 +194,10 @@ const FriendsPage: React.FC = () => {
                                                 Manage your connections and network
                                             </p>
                                         </div>
-                                        <button className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium transition-all shadow-lg">
+                                        <button 
+                                            onClick={() => setShowAddFriendModal(true)}
+                                            className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium transition-all shadow-lg"
+                                        >
                                             <UserPlus className="h-4 w-4" />
                                             Add Friend
                                         </button>
@@ -292,6 +360,130 @@ const FriendsPage: React.FC = () => {
                     className="fixed inset-0 z-0"
                     onClick={() => setActiveMenu(null)}
                 />
+            )}
+
+            {/* Add Friend Modal */}
+            {showAddFriendModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="relative w-full max-w-2xl rounded-2xl border border-white/10 bg-black/90 backdrop-blur-xl shadow-2xl animate-in zoom-in-95 duration-200 max-h-[80vh] overflow-hidden flex flex-col">
+                        <div className="absolute inset-px rounded-[1rem] bg-gradient-to-b from-white/5 to-white/0 pointer-events-none" />
+                        
+                        <div className="relative p-6 border-b border-white/10">
+                            {/* Close button */}
+                            <button
+                                onClick={() => {
+                                    setShowAddFriendModal(false)
+                                    setSearchEmail("")
+                                    setSearchResults([])
+                                }}
+                                className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+
+                            {/* Title */}
+                            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                                <UserPlus className="h-6 w-6" />
+                                Add Friend
+                            </h3>
+
+                            {/* Search Input */}
+                            <div className="relative">
+                                <input
+                                    type="email"
+                                    value={searchEmail}
+                                    onChange={(e) => setSearchEmail(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && handleSearchUsers()}
+                                    placeholder="Search by email..."
+                                    className="w-full rounded-xl bg-white/5 text-white placeholder:text-white/40 border border-white/10 focus:border-white/20 focus:ring-2 focus:ring-white/20 outline-none px-4 py-3 pl-10 text-sm"
+                                />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/40" />
+                                <button
+                                    onClick={handleSearchUsers}
+                                    disabled={searching || !searchEmail.trim()}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {searching ? "Searching..." : "Search"}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Search Results */}
+                        <div className="relative p-6 overflow-y-auto flex-1">
+                            {searchResults.length === 0 ? (
+                                <div className="text-center py-12 text-white/40">
+                                    {searchEmail.trim() ? "No users found" : "Search for users by email to add them as friends"}
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {searchResults.map((result) => {
+                                        const avatarSrc = getAvatarSrc(result)
+                                        const initials = getInitials(result.name || result.email)
+
+                                        return (
+                                            <div
+                                                key={result.id}
+                                                className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.05] transition-all"
+                                            >
+                                                <div className="absolute inset-px rounded-[0.7rem] bg-gradient-to-b from-white/5 to-white/0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                
+                                                <div className="relative p-4 flex items-center gap-4">
+                                                    {/* Avatar */}
+                                                    <div 
+                                                        className="flex-shrink-0 cursor-pointer"
+                                                        onClick={() => {
+                                                            setShowAddFriendModal(false)
+                                                            navigate(`/user/${result.id}`)
+                                                        }}
+                                                    >
+                                                        {avatarSrc ? (
+                                                            <img
+                                                                src={avatarSrc}
+                                                                alt={result.name}
+                                                                className="h-14 w-14 rounded-full object-cover border-2 border-white/10"
+                                                            />
+                                                        ) : (
+                                                            <div className="h-14 w-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-base font-semibold text-white">
+                                                                {initials}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* User Info */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <h3 
+                                                            className="text-white font-semibold text-base truncate group-hover:text-blue-400 transition-colors cursor-pointer"
+                                                            onClick={() => {
+                                                                setShowAddFriendModal(false)
+                                                                navigate(`/user/${result.id}`)
+                                                            }}
+                                                        >
+                                                            {result.name || "Unknown User"}
+                                                        </h3>
+                                                        <p className="text-white/60 text-sm truncate flex items-center gap-1.5 mt-0.5">
+                                                            <Mail className="h-3.5 w-3.5" />
+                                                            {result.email}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Add Friend Button */}
+                                                    <button
+                                                        onClick={() => handleSendFriendRequest(result.id)}
+                                                        disabled={sendingRequest === result.id}
+                                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        <UserPlus className="h-4 w-4" />
+                                                        {sendingRequest === result.id ? "Sending..." : "Add"}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     )
