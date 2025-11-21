@@ -4,7 +4,6 @@ import DarkVeil from "@/components/DarkVeil"
 import Sidebar from "@/custom-components/Sidebar"
 import BottomBar from "@/custom-components/BottomBar"
 import supabase from "@/supabase-client"
-import type { User } from "@supabase/supabase-js"
 import { Bell, UserPlus, Users, Check, X, Mail } from "lucide-react"
 import dayjs from "dayjs"
 import relativeTime from "dayjs/plugin/relativeTime"
@@ -35,7 +34,6 @@ type Follower = {
 
 const InboxPage: React.FC = () => {
     const navigate = useNavigate()
-    const [user, setUser] = useState<User | null>(null)
     const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([])
     const [newFollowers, setNewFollowers] = useState<Follower[]>([])
     const [loading, setLoading] = useState(true)
@@ -47,7 +45,6 @@ const InboxPage: React.FC = () => {
             const {
                 data: { user },
             } = await supabase.auth.getUser()
-            setUser(user)
             if (user) {
                 loadNotifications(user.id)
             }
@@ -57,7 +54,6 @@ const InboxPage: React.FC = () => {
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null)
             if (session?.user) {
                 loadNotifications(session.user.id)
             }
